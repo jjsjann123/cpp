@@ -1,0 +1,128 @@
+meta programming notes:
+
+Templates:
+function template
+class template
+alias template
+variable template
+
+1. class template with static variable
+ a. we can put its definition in the header file.
+    wut??
+
+    ```
+      template<class T>
+      struct ST {
+        static int sdm;
+      };
+  
+      template<class T>
+      int ST<T>::sdm = 42;
+    ```
+
+    Presenter says it's the same thing as inline? what?
+    figure out how it works with multiple difinition across compilation units?
+
+    N4606 $3.2 [basic.def.odr] /6
+
+c++11 alias templates
+c++14 variable templates
+c++17 deduction for class templates
+      auto in template parameter
+
+2. type deduction in template. -> no implicit conversions allowed.
+  type deduction only happens for function templates.
+
+3. reference collapsing
+  &  + &  = &
+  &  + && = &
+  && + &  = &
+  && + && = &&
+  e.g.
+  template<typename T>
+  void f(T&& t) { }
+  /*
+   * f(42)   // with [T=int]
+   * 42 is int&&
+   * So we deduce T such that T&& is int&&.
+   * T=int works
+   *
+   * int i;
+   * f(i) // with [T=int&]
+   * i is int&
+   * so we decude T such that T&& is int&.
+   * Either T=int or T=int&& would mean T&&=int&&
+   * But T=int& works!
+   */
+
+  const type& is a little special though. Because of 
+
+4. defining a specialiation
+syntax:
+    template<> xxxxxxx
+
+  alias templates can't be specialized
+  class templates can be specialized
+  function templates can't be partially specialized
+
+5. Explicit instantiation of template
+syntax:
+    template int abs(int);  // or: abs<>(int) or: abs<int>(int)
+
+  -> how do you tell compiler the instantiation is done somehwere else?
+    extern template int abs(int);
+
+  * instantiaion of a template class gives you all the members of that template
+    class -> both static members and non-static members.
+
+use example (isolate implementation of template in a separate compilation unit)
+xxx.h:
+    template<typename T> T abs(T);
+    extern template int abs<int>(int);
+    extern template float abs<float>(float);
+xxx.cpp:
+    template<typename T> T abs(T) { ...impl... }
+    template int abs<int>(int);
+    template float abs<float>(float);
+  ### don't mismatch specialization with explicit instantiation
+      one with template<>; while the other with template.
+      Could ended up with competing definition -> but might magically
+      work with name mangling...
+
+6. Special case
+  a. Inside the definition of a class template, the bare template-name can be
+  used as a type-name, in which case it's basically as if you put
+  <all the template-parameters> after it
+
+  b. By default, C++ assume that any names whose lookup is dependent on a
+  template parameter refers to a non-type, non-template, plain old
+  variable/function/object-style entity.
+  if you wnat other wise, use typename before a dependent qualified name.
+  ## STL best practice: _t synonyms
+  leverage alias template with _t that takes an typename there to simplify code
+      ```
+      template<class Iter>
+      using iter_supports_plus_t =
+          typename iter_traits<Iter>::supports_plus;
+      ```
+
+  c. Declarations and definitions
+  Rule of thumb for compiler:
+  i.  implicit instantiation could be inlined by compiler;
+  ii. never instantiate anything unless absolutely necessary;
+
+  d. template and inline
+  Sorta treated the same, multiple definitions and compiler is free to pick
+  whichever it likes.
+
+  e. variadic template type decution:
+  i.  as far as decution is concerned, a parameter-pack (Ts... ts) contributes
+  to deduction only if it comes at the very end of the function parameter list.
+      i.e. template<class T, class... Us> void g(Us... us, T);
+           g('x', 1, 2); // us doesn't contribute to deduction, because it is
+                         // not at the end, so this fails;
+
+  f. template non-type parameters
+
+  g. class template deduction
+  implementation is basically a sugared make_xxx armed with overload resolution

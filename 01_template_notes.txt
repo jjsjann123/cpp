@@ -126,3 +126,18 @@ xxx.cpp:
 
   g. class template deduction
   implementation is basically a sugared make_xxx armed with overload resolution
+
+  h. SFINAE - Substitution failure is not an Error
+  Context: function overload resolution
+      fit template is instantiated and failure here is silently removed.
+
+    i. SFINAE to check for a member function
+      two overloaded template functions
+        - first should contain some expression referring to the member function
+          and be a better match for the call
+        - second should always match the call, not as well as the first.
+      we need to avoid actuallly calling the functions (evaluation) even at
+      compile-time: if the expression must be evaluated but is invalid,
+      diagnostic is issued
+        - operands of sizeof, decltype, declval, alignof, typeid, and noexcept
+          are never evaluated!

@@ -1,0 +1,105 @@
+0. Waist-high shelves for cxx
+
+* Templated using declarations
+* default template parameters for function templates
+* constexpr
+* <type_traits>, in particular those aspects that require participation by the
+  compiler
+* ...and some assistance from variadic templates
+
+variadic template parameters -> c++14
+fold expressions -> c++17
+
+1. SFINAE is simple -> said no one ever.
+
+1.1. example -> preprocessing for overload resolution
+c++11 allows default template parameters for function templates
+    ```
+    template <
+      typename T,
+      typename = enable_if_t<is_base_of<Shape, T>::value>
+    >
+    void munge_shape(T const &a) {}
+    ```
+
+if this the constraints grows, the syntax will look aweful
+c++14 alias template
+    ```
+    template <typename T>
+    using IsShape = typename enable_if_t<is_base_of<Shape, T>::value>;
+
+    template <typename T, typename = IsShape<T>>
+    void munge_shape(T const &a) {}
+    ```
+
+1.2 example -> fixing surprised in range initialization.
+    ```
+    template <typename T>
+    class Heap {
+    public:
+      Heap(size_t n, T const &v);
+
+      template <typename In>
+      Head(In b, In e); // range init , meant for iterator begin, end
+    };
+
+    Heap<int> h (5, 0); // this will unintentionally go to the range initializer
+    ```
+
+update, SFINAE on the range initialization by forcing `In` to be an iterator
+type
+
+1.3 example -> universal references
+    ```
+    template <typename T>
+    class X {
+    public:
+      void operation(T const &); // #1: lvalue version
+      void operation(T &&);      // #2: rvalue version
+
+      template <typename S>
+      void operation(S &&);      // #3: universal version
+                                 // this is the danger point.
+                                 // The intention is to use it when S != T
+    };
+    ```
+Problem is, universal version are very accommodating and somewhat surprising
+better matches than functions without universal reference arguments.
+
+`std::decay`
+
+    ```
+    template<typename S, typename T>
+    using similar = is_same<decay_t<S>, decay_t<T>>;
+
+    template<typename S, typename T>
+    using NotSimilar = enable_if_t<!similar<S, T>::value>;
+
+    // then update the template parameter with x:
+    // class X {
+      template <typename S,
+                typename = NotSimilar<S, T>>
+      void operation(S &&);      // #3: universal version
+                                 // now with right intention
+    ```
+
+1.4 example -> self-identification
+mark container / template functions with attributes that would be queried &
+affecting interface.
+
+    extended example -> predicate composition
+    have combined conditions.
+      fold expressions -> c++17?!?!
+      didn't go into details here.
+
+    39:33 - continue watching this!!!
+    extended example -> complex constraints
+      template trees?!?!
+             &
+          /     \
+       pred1    |
+             /     \
+           pred2   |
+                  pred3
+
+1.5 SFINAE could be used to save name lookup conflicts.
